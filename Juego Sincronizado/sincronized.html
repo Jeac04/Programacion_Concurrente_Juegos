@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Gato - Animación de Victoria</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            position: relative;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+            border: 1px solid #000;
+            font-size: 2rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .winner {
+            background-color: #4CAF50 !important; 
+            color: #fff;  
+        }
+        #winnerMessage {
+            position: absolute;
+            top: 20px;
+            font-size: 2rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="winnerMessage"></div>
+    <div class="game-board" id="gameBoard"></div>
+    <script>
+        const gameBoard = document.getElementById('gameBoard');
+        const winnerMessage = document.getElementById('winnerMessage');
+        const board = Array(9).fill(null);  
+        let currentPlayer = 'X';  
+
+        board.forEach((_, idx) => {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.setAttribute('data-index', idx);  
+            cell.addEventListener('click', handleClick);  
+            gameBoard.appendChild(cell);
+        });
+
+        function handleClick(e) {
+            const index = e.target.getAttribute('data-index');
+            if (board[index] !== null) return;
+
+            board[index] = currentPlayer;
+            e.target.textContent = currentPlayer;
+
+            const winningCombination = checkWinner();
+            if (winningCombination) {
+                highlightWinner(winningCombination);
+                showWinnerMessage(currentPlayer);
+            } 
+            else if (board.every(cell => cell !== null)) {
+                showWinnerMessage('Empate');
+            } 
+            else {
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            }
+        }
+
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], //horizontales
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], //verticales
+                [0, 4, 8], [2, 4, 6]             //diagonales
+            ];
+
+            for (const combination of winningCombinations) {
+                if (combination.every(index => board[index] === currentPlayer)) {
+                    return combination;
+                }
+            }
+            return null;  
+        }
+
+        function highlightWinner(winningCombination) {
+            winningCombination.forEach(index => {
+                const cell = document.querySelector(`.cell[data-index='${index}']`);
+                cell.classList.add('winner');
+            });
+        }
+
+        function showWinnerMessage(winner) {
+            winnerMessage.textContent = winner === 'Empate' ? '¡Empate!' : `¡${winner} ha ganado!`;
+            winnerMessage.style.display = 'block';
+            setTimeout(resetBoard, 2000);
+        }
+
+        function resetBoard() {
+            board.fill(null);  
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';  
+                cell.classList.remove('winner'); 
+            });
+            winnerMessage.style.display = 'none';  
+            currentPlayer = 'X';  
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gato en Línea</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+            border: 1px solid #000;
+            font-size: 2rem;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 20px;
+            font-size: 1.2rem;
+        }
+        .winner {
+            background-color: green;
+            color: white;
+            font-weight: bold;
+        }
+        .winner-message {
+            font-size: 2rem;
+            color: green;
+            margin-top: 20px;
+            padding: 10px;
+            border: 2px solid green;
+            background-color: lightgreen;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="game-board" id="gameBoard"></div>
+        <div class="status" id="status">Esperando jugadores...</div>
+        <div id="winnerMessage" class="winner-message hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io('http://10.0.3.150:3001'); 
+
+        let player = null; 
+        let isTurn = false; 
+        const winnerMessage = document.getElementById('winnerMessage');
+
+        socket.on('connect', () => {
+            console.log('Conectado al servidor');
+        });
+
+        socket.on('assignPlayer', (assignedPlayer) => {
+            player = assignedPlayer;
+            console.log(`Asignado como jugador ${player}`);
+            updateStatus(gameState.currentPlayer);
+        });
+
+        socket.on('gameFull', () => {
+            alert('El juego está lleno. Intenta más tarde.');
+        });
+
+        socket.on('gameState', (gameState) => {
+            updateBoard(gameState.board);  
+            isTurn = gameState.currentPlayer === player;
+            updateStatus(gameState.currentPlayer);
+        });
+
+        socket.on('gameOver', (data) => {
+            updateBoard(data.board);  
+            if (data.winner === 'Empate') {
+                displayWinnerMessage('¡Empate!');
+            } else {
+                highlightWinningCells(data.combination);
+                displayWinnerMessage(`¡${data.winner} ha ganado!`);
+            }
+            setTimeout(() => {
+                resetBoard();
+            }, 4000);
+        });
+
+        const gameBoard = document.getElementById('gameBoard');
+        const statusDisplay = document.getElementById('status');
+
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.setAttribute('data-index', i);
+            cell.addEventListener('click', handleMove);
+            gameBoard.appendChild(cell);
+        }
+
+        function handleMove(e) {
+            const index = e.target.getAttribute('data-index');
+            if (isTurn && !e.target.textContent) {
+                socket.emit('makeMove', { index, player });
+            } else {
+                console.log("No es tu turno o la celda ya está ocupada.");
+            }
+        }
+
+        function updateBoard(board) {
+            document.querySelectorAll('.cell').forEach((cell, idx) => {
+                cell.textContent = board[idx];
+                cell.classList.remove('winner');
+            });
+        }
+
+        function updateStatus(currentPlayer) {
+            if (isTurn) {
+                statusDisplay.textContent = 'Es tu turno';
+            } else {
+                statusDisplay.textContent = `Es el turno de ${currentPlayer}`;
+            }
+        }
+
+        function highlightWinningCells(combination) {
+            combination.forEach(index => {
+                const cell = document.querySelector(`.cell[data-index="${index}"]`);
+                cell.classList.add('winner');
+            });
+        }
+
+        function displayWinnerMessage(message) {
+            winnerMessage.textContent = message;
+            winnerMessage.classList.remove('hidden');
+        }
+
+        function resetBoard() {
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('winner');
+            });
+            winnerMessage.classList.add('hidden');
+            winnerMessage.textContent = '';
+        }
+    </script>
+</body>
+</html>
